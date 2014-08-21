@@ -9,5 +9,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "joscarsson/ubuntu-trusty64-chef"
   config.vm.provision :shell, :path => "bootstrap.sh"
   config.vm.network "forwarded_port", guest: 3000, host: 3000
+  config.vm.synced_folder "/Users/chardt/working", "/working"
+#, :nfs => true
 
 end

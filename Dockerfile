@@ -1,14 +1,14 @@
 FROM ubuntu:14.04
 MAINTAINER Charlie Hardt <chasdev@me.com>
+# Example Dockerfiles used for reference:
+#   https://github.com/thierrymarianne/zen-cmd/blob/master/Dockerfile
+#   https://github.com/jeffknupp/docker/blob/master/dev_environment/Dockerfile
 
 # Update repo
 RUN apt-get update
 
-# and git and zshell 
-RUN apt-get -yq install git curl zsh
-
-# Install packages needed to compile binaries
-RUN apt-get install -y -q build-essential autotools-dev automake pkg-config
+# Install git and zshell and packages needed to compile binaries
+RUN apt-get install -y -q git curl zsh build-essential autotools-dev automake pkg-config cmake python-dev
 
 # Make directory where repositories are cloned
 RUN mkdir /opt/src || echo 'Sources directory exists already'
@@ -20,10 +20,7 @@ RUN mkdir /opt/local || echo 'Local directory exists already'
 RUN git clone git://git.code.sf.net/p/tmux/tmux-code /opt/src/tmux-code
 
 # Fetch latest modifications in case the script should be re-run
-RUN cd /opt/src/tmux-code && git fetch --all
-
-# Checkout latest tmux tag
-RUN cd /opt/src/tmux-code && git checkout tags/1.9
+RUN cd /opt/src/tmux-code && git fetch --all && git checkout tags/1.9
 
 # Install tmux dependencies
 RUN apt-get install -y -q libncurses5-dev libevent-dev
@@ -42,10 +39,14 @@ RUN apt-get install -y -q zsh
 # Create user
 RUN useradd -m -s /bin/zsh me
 
+# Set a password for 'me'
+RUN echo "me!\nme!" | passwd me
+
 # Clone oh-my-zsh
 RUN git clone https://github.com/robbyrussell/oh-my-zsh.git ~me/.oh-my-zsh
 
 # Create a new zsh configuration from the provided template
+# (we'll later back this up and use chasdev/config-files version)
 RUN cp ~me/.oh-my-zsh/templates/zshrc.zsh-template ~me/.zshrc
 
 # Install openssh server
@@ -60,9 +61,6 @@ RUN apt-get install -yq openssh-server
 # Set zsh as default shell
 RUN chsh -s /bin/zsh me
 
-# Set a password for 'me'
-RUN echo "me!\nme!" | passwd me
-
 # Generate UTF-8 locale
 RUN locale-gen en_US.UTF-8
 
@@ -73,7 +71,7 @@ RUN mkdir /var/run/sshd
 RUN mkdir ~me/.ssh
 
 # Copy ssh keys pair to home directory of 'me' user
-#ADD ./ssh/xxxxxxxx.pub /home/me/.ssh/authorized_keys
+#ADD id_boot2docker.pub /home/me/.ssh/authorized_keys
 
 EXPOSE 22
 
@@ -92,10 +90,10 @@ RUN mv .zshrc .zshrc.bak && ln -s devtools/config-files/.zshrc
 RUN ln -s devtools/config-files/.bash_profile
 RUN ln -s devtools/config-files/.tmux.conf
 
-RUN git clone https://github.com/gmarik/Vundle.vim.git .vim/bundle/Vundle.vim
+RUN git clone https://github.com/gmarik/Vundle.vim.git ~me/.vim/bundle/Vundle.vim
 
 # Create .zshrc.include file to prepare for manually installed tools
-RUN echo "export PATH=$PATH\n" > .zshrc.include
+#RUN echo "export LD_LIBRARY_PATH=/home/me/lib:$LD_LIBRARY_PATH\n" > .zshrc.include
 
 RUN echo "To set up your vim environment, run the command :PluginInstall after launching vim." >> README
 
