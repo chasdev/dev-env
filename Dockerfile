@@ -1,8 +1,10 @@
 FROM ubuntu:14.04
 MAINTAINER Charlie Hardt <chasdev@me.com>
-# Example Dockerfiles used for reference:
+# References:
 #   https://github.com/thierrymarianne/zen-cmd/blob/master/Dockerfile
 #   https://github.com/jeffknupp/docker/blob/master/dev_environment/Dockerfile
+#   http://viget.com/extend/how-to-use-docker-on-os-x-the-missing-guide
+#   https://github.com/jpetazzo/nsenter#docker-enter-with-boot2docker
 
 # Update repo
 RUN apt-get update
@@ -36,67 +38,30 @@ RUN cd /opt/src/tmux-code && make && make install && ln -s /opt/local/tmux/bin/t
 # Install zsh
 RUN apt-get install -y -q zsh
 
-# Create user
-RUN useradd -m -s /bin/zsh me
-
-# Set a password for 'me'
-RUN echo "me!\nme!" | passwd me
-
 # Clone oh-my-zsh
-RUN git clone https://github.com/robbyrussell/oh-my-zsh.git ~me/.oh-my-zsh
+RUN git clone https://github.com/robbyrussell/oh-my-zsh.git /root/.oh-my-zsh
 
 # Create a new zsh configuration from the provided template
 # (we'll later back this up and use chasdev/config-files version)
-RUN cp ~me/.oh-my-zsh/templates/zshrc.zsh-template ~me/.zshrc
-
-# Install openssh server
-RUN apt-get install -yq openssh-server
-
-# Disablea password authentication
-#RUN sed -i -e 's/^#PasswordAuthentication\syes/PasswordAuthentication no/' /etc/ssh/sshd_config
-
-# pam_loginuid is disabled
-#RUN sed -i -e 's/^\(session\s\+required\s\+pam_loginuid.so$\)/#\1/' /etc/pam.d/sshd
-
-# Set zsh as default shell
-RUN chsh -s /bin/zsh me
+RUN cp /root/.oh-my-zsh/templates/zshrc.zsh-template /root/.zshrc
 
 # Generate UTF-8 locale
 RUN locale-gen en_US.UTF-8
-
-# Create missing privilege separation directory
-RUN mkdir /var/run/sshd
-
-# Make ssh directory of 'me' user
-RUN mkdir ~me/.ssh
-
-# Copy ssh keys pair to home directory of 'me' user
-#ADD id_boot2docker.pub /home/me/.ssh/authorized_keys
 
 EXPOSE 22
 
 # Install vim
 RUN apt-get -yq install vim 
 
-# Continue as user 'me' and from that user's home
-USER me
-WORKDIR /home/me
-
 # Clone config files 
-RUN mkdir -p devtools
-RUN git clone https://github.com/chasdev/config-files.git devtools/config-files
-RUN ln -s devtools/config-files/.vimrc
-RUN mv .zshrc .zshrc.bak && ln -s devtools/config-files/.zshrc
-RUN ln -s devtools/config-files/.bash_profile
-RUN ln -s devtools/config-files/.tmux.conf
+RUN mkdir -p /root/devtools
+RUN git clone https://github.com/chasdev/config-files.git /root/devtools/config-files
+RUN ln -s /root/devtools/config-files/.vimrc /root/.vimrc
+RUN mv /root/.zshrc /root/.zshrc.bak && ln -s /root/devtools/config-files/.zshrc
+RUN ln -s /root/devtools/config-files/.bash_profile /root/.bash_profile
+RUN ln -s /root/devtools/config-files/.tmux.conf /root/.tmux.conf
 
-RUN git clone https://github.com/gmarik/Vundle.vim.git ~me/.vim/bundle/Vundle.vim
-
-# Create .zshrc.include file to prepare for manually installed tools
-#RUN echo "export LD_LIBRARY_PATH=/home/me/lib:$LD_LIBRARY_PATH\n" > .zshrc.include
+RUN git clone https://github.com/gmarik/Vundle.vim.git /root/.vim/bundle/Vundle.vim
 
 RUN echo "To set up your vim environment, run the command :PluginInstall after launching vim." >> README
 
-# Lastly, as root, we'll start up ssh...
-USER root
-CMD    ["/usr/sbin/sshd", "-D"]
