@@ -2,13 +2,13 @@
 
 Status:  Under refinement.
 
-The Dockerfile contained in this repository may be used to automate much of the establishment of a development environment that uses zsh, vim, and tmux.
+The Dockerfile contained in this repository may be used to automate most of the establishment of a zsh and vim based development environment. It currently does not support tmux (due to the lack of a tty when using nsenter).
 
 _Disclaimer: This Dockerfile and the related configuration files represent my own development environment, which continues to evolve. Use at your own risk._
 
 #####Background
 
-The development environment established within a docker container is based on my personal development environment (available at [https://github.com/chasdev/config-files](https://github.com/chasdev/config-files)).  The 'config-files' repository contains various configuration files for zsh, vim, tmux and more. This project installs the necessary software and retrieves the configuration files from the referenced 'config-files' repository.  There are currently 'manual steps' that must still be performed. I expect to reduce the manual steps in the future.
+The development environment established within a docker container is a subset of my personal development environment (available at [https://github.com/chasdev/config-files](https://github.com/chasdev/config-files)).  The 'config-files' repository contains various configuration files for zsh, vim, tmux and more. This project installs the necessary software and retrieves the configuration files from the referenced 'config-files' repository, although only zsh and vim are dockerized.  There are currently 'manual steps' (described below) that must be performed, although I hope to reduce the manual steps in the future.
 
 References that you may find helpful (and that were important resources used by me when creating this Dockerfile):
 * [How to use docker on OS X: the missing guide](http://viget.com/extend/how-to-use-docker-on-os-x-the-missing-guide)
@@ -67,7 +67,7 @@ $ boot2docker ssh
 # exit
 ```
 
-Lastly, add the docker-enter function to your OS X .zshrc or .bash_profile that is listed [here](https://github.com/jpetazzo/nsenter#docker-enter-with-boot2docker), except include in the second 'ssh' command the -t flag (necessary to ensure tty is configured). That is, add the following:
+Lastly, add the docker-enter function to your OS X .zshrc or .bash_profile that is listed [here](https://github.com/jpetazzo/nsenter#docker-enter-with-boot2docker), except include within the second 'ssh' command the -t flag (necessary to ensure tty is configured). That is, add the following function:
 
 ```
 docker-enter() {
@@ -76,6 +76,8 @@ docker-enter() {
 }
 ```
 
+The above function can be used to enter the Docker container without needing to ssh into the containing 'boot2docker' VM first.
+
 #####Build and start a ubuntu VM
 
 ```
@@ -83,11 +85,11 @@ $ git clone git@github.com:chasdev/dev-env.git
 $ cd dev-env
 ```
 
-_Note: While boot2docker is recommended, the included Vagrantfile (and accompanying bootsrap.sh shell script) can be used to install Docker and mount '$HOME/working' on the host (e.g., OS X) as '/working' within the VM. If using boot2docker you should ignore the Vagrantfile._
+_Note: While boot2docker is recommended, the included Vagrantfile (and accompanying bootsrap.sh shell script) can be used to install Docker and mount '$HOME/working' on the host (e.g., OS X) as '/working' within the VM. If using boot2docker you should ignore the Vagrantfile and bootstrap shell script._
 
 #####Building the image and running a container
 
-From within the Vagrant VM: (you can use another tag versus chasdev/dev-env)
+I keep all of my projects within a '~/working' and the following will map this to '/working' within the container.
 
 ```
 $ docker build -t chasdev/dev-env .
@@ -97,7 +99,9 @@ $ docker-enter dev
 
 #####Start vim and install plugins
 
-NOTE: The Dockerfile does not currently install Go (golang), but one of the vim plugins specified in the .vimrc requires Go.  Either install Go or edit the .vimrc file to remove 'vim-go'. If you forget, just delete it from .vim/bundles afterwards.
+Now that the container is up and you have entered it, there are a few manual steps needed to configure vim.  First, we'll install the plugins using Vundle.
+
+_NOTE: The Dockerfile does not currently install Go (golang), but one of the vim plugins specified in the .vimrc requires Go.  Either install Go or edit the .vimrc file to remove 'vim-go'. If you forget, just delete it from .vim/bundles afterwards._
 
 ```
 $ v .
@@ -114,4 +118,7 @@ $ ./install.sh
 $ cd ~/.vim/bundle/vimproc
 $ make
 ```
+
+The container should now be usable, providing a command-line centric development
+environment comprised of zsh, vim, git, and git-extras.
 
