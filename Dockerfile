@@ -10,6 +10,7 @@ MAINTAINER Charlie Hardt <chasdev@me.com>
 
 # Update repo
 RUN apt-get update
+RUN apt-get install --only-upgrade bash
 
 # Install git and zshell and packages needed to compile binaries
 RUN apt-get install -y -q git curl zsh build-essential autotools-dev automake pkg-config cmake python-dev
