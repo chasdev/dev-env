@@ -1,59 +1,79 @@
-FROM ubuntu:14.04
+FROM ubuntu:latest
 MAINTAINER Charlie Hardt <chasdev@me.com>
+
+# ------------------------------------------------------------------
+# Significant Changes:
+#   Now uses ssh versus nsenter, along with the ssh_key_adder.rb from
+#   https://github.com/dpetersen/dev-container-base/blob/master/Dockerfile
+#   Also uses wemux (again, based upon dpetersen's approach).
+#
 # References:
+#   http://www.centurylinklabs.com/cloud-coding-docker-remote-pairing/
+#   https://github.com/dpetersen/dev-container-base
 #   http://viget.com/extend/how-to-use-docker-on-os-x-the-missing-guide
-#   https://github.com/jpetazzo/nsenter#docker-enter-with-boot2docker
 #   https://github.com/thierrymarianne/zen-cmd/blob/master/Dockerfile
 #   https://github.com/jeffknupp/docker/blob/master/dev_environment/Dockerfile
+#
+# The ssh_key_adder.rb file and parts of this Dockerfile have been
+# stolen from Don Petersen, who retains all credit and appreciation.
+# Please see: 
+# https://github.com/dpetersen/dev-container-base/blob/master/ssh_key_adder.rb 
+# and his Dockerfile contained in that same repo.
+# ------------------------------------------------------------------
 
-# Note: tmux is currently not supported due to lack of tty when using nsenter
+ADD ssh_key_adder.rb /root/ssh_key_adder.rb
 
-# Update repo
-RUN apt-get update
-RUN apt-get install --only-upgrade bash
+# Start by changing the apt output, as stolen from Discourse's Dockerfiles.
+RUN echo "debconf debconf/frontend select Teletype" | debconf-set-selections && \
 
-# Install git and zshell and packages needed to compile binaries
-RUN apt-get install -y -q git curl zsh build-essential autotools-dev automake pkg-config cmake python-dev
+  apt-get update && \
+  apt-get install -y openssh-client git build-essential vim ctags man make cmake curl && \
+  apt-get install -y python-dev python-software-properties software-properties-common && \
+  add-apt-repository -y ppa:pi-rho/dev && \
+  apt-get update && \
+  apt-get install -y tmux=2.0-1~ppa1~t && \
 
-# Install and build git-extras
-RUN (cd /tmp && git clone --depth 1 https://github.com/visionmedia/git-extras.git && cd git-extras && sudo make install)
+# Set up for pairing with wemux.
+  git clone git://github.com/zolrath/wemux.git /usr/local/share/wemux && \
+  ln -s /usr/local/share/wemux/wemux /usr/local/bin/wemux && \
+  cp /usr/local/share/wemux/wemux.conf.example /usr/local/etc/wemux.conf && \
+  echo "host_list=(root)" >> /usr/local/etc/wemux.conf && \
 
-# Make directory where repositories are cloned
-RUN mkdir /opt/src || echo 'Sources directory exists already'
+# Install ruby, which is used for github-auth
+  apt-get install -y ruby && \
 
-# Make directory where our command-line tools will installed
-RUN mkdir /opt/local || echo 'Local directory exists already'
+# Install the Github Auth gem, which will be used to get SSH keys from GitHub
+# to authorize users for SSH
+  gem install github-auth --no-rdoc --no-ri && \
 
-# Install zsh
-RUN apt-get install -y -q zsh
+# Clone config files
+  mkdir -p /root/devtools && \
+  git clone https://github.com/chasdev/config-files.git /root/devtools/config-files && \
+  ln -s /root/devtools/config-files/.vimrc /root/.vimrc && \
+  ln -s /root/devtools/config-files/.tmux.conf /root/.tmux.conf && \
+  ln -s /root/devtools/config-files/.bash_profile /root/.bash_profile && \
+  ln -s /root/devtools/config-files/.gitconfig /root/.gitconfig && \
+  ln -s /root/devtools/config-files/.gitignore /root/.gitignore && \
+  git clone https://github.com/gmarik/Vundle.vim.git /root/.vim/bundle/Vundle.vim && \
+  ln -s /root/devtools/config-files/my-snippets /root/.vim/my-snippets && \
 
-# Clone oh-my-zsh
-RUN git clone https://github.com/robbyrussell/oh-my-zsh.git /root/.oh-my-zsh
-
-# Create a new zsh configuration from the provided template
-# (we'll later back this up and use chasdev/config-files version)
-RUN cp /root/.oh-my-zsh/templates/zshrc.zsh-template /root/.zshrc
-RUN touch /root/.zshrc.include
+# Set up SSH with SSH forwarding
+  apt-get install -y openssh-server && \
+  mkdir /var/run/sshd && \
+  echo "AllowAgentForwarding yes" >> /etc/ssh/sshd_config && \
 
 # Generate UTF-8 locale
-RUN locale-gen en_US.UTF-8
+  locale-gen en_US en_US.UTF-8 && dpkg-reconfigure locales
 
+# install the vim plugins using Vundle plugin manager
+RUN vim +PluginInstall +qall > /dev/null 2>&1
+RUN cd ~/.vim/bundle/YouCompleteMe && ./install.sh
+RUN cd ~/.vim/bundle/vimproc.vim && make 
+
+# Expose SSH
 EXPOSE 22
 
-# Install vim
-RUN apt-get -yq install vim 
-
-# Clone config files 
-RUN mkdir -p /root/devtools
-RUN git clone https://github.com/chasdev/config-files.git /root/devtools/config-files
-RUN ln -s /root/devtools/config-files/.vimrc /root/.vimrc
-RUN mv /root/.zshrc /root/.zshrc.bak && ln -s /root/devtools/config-files/.zshrc /root/.zshrc
-RUN ln -s /root/devtools/config-files/.bash_profile /root/.bash_profile
-RUN ln -s /root/devtools/config-files/.gitconfig /root/.gitconfig
-RUN ln -s /root/devtools/config-files/.gitignore /root/.gitignore
-
-RUN git clone https://github.com/gmarik/Vundle.vim.git /root/.vim/bundle/Vundle.vim
-RUN ln -s /root/devtools/config-files/my-snippets /root/.vim/my-snippets
-
-RUN chsh -s /bin/zsh
+# Install the SSH keys of ENV-configured GitHub users before running the SSH
+# server process. See README for SSH instructions.
+CMD /root/ssh_key_adder.rb && /usr/sbin/sshd -D
 
