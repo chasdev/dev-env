@@ -47,8 +47,6 @@ The above will indicate the DOCKER_HOST environment variable must be set if you 
 export DOCKER_HOST=tcp://192.168.59.103:2376
 ```
 
-#####Build and start a ubuntu VM
-
 ```
 $ git clone git@github.com:chasdev/dev-env.git
 $ cd dev-env
@@ -93,5 +91,5 @@ ssh devbox
 
 [Vundle](https://github.com/gmarik/Vundle.vim) is used to install all vim plugins listed in the .vimrc file (from 'https://github.com/chasdev/config-files'), and the Dockerfile includes steps to build the necessary native libraries for these plugins. Unlike previous versions of this container, no manual configuration is necessary to use vim, tmux, or wemux.
 
-The container should be usable, providing a command-line centric development environment comprised of bash, vim, tmux, and git. This container should be extended to provide a complete development environment with language-specific support (e.g., node.js, golang, Java/groovy, Scala, etc.).
+The container should be usable, providing a command-line centric development environment comprised of bash, vim, tmux, and git. This container may be extended to provide a complete development environment with language-specific support (e.g., node.js, golang, Java/groovy, Scala, etc.).  My [dev-env-node](https://github.com/chasdev/dev-env-nodejs) container is an example.
 
